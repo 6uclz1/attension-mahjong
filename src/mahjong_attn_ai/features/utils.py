@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Iterable, List, Sequence
 
 import torch
 
@@ -23,6 +23,7 @@ class MahjongVocabulary:
     action_to_id: Dict[str, int]
     pad_id: int
     cls_id: int
+    action_pad_id: int
 
     @classmethod
     def build_default(cls) -> "MahjongVocabulary":
@@ -52,7 +53,30 @@ class MahjongVocabulary:
             action_to_id=action_to_id,
             pad_id=token_to_id[PAD_TOKEN],
             cls_id=token_to_id[CLS_TOKEN],
+            action_pad_id=action_to_id[PAD_TOKEN],
         )
+
+    @property
+    def num_board_tokens(self) -> int:
+        return len(self.token_to_id)
+
+    @property
+    def num_action_tokens(self) -> int:
+        return len(self.action_to_id)
+
+    def resolve_board_token(self, token: int | str) -> int:
+        if isinstance(token, int):
+            return token
+        if token not in self.token_to_id:
+            raise KeyError(f"Unknown board token: {token}")
+        return self.token_to_id[token]
+
+    def resolve_action_token(self, token: int | str) -> int:
+        if isinstance(token, int):
+            return token
+        if token not in self.action_to_id:
+            raise KeyError(f"Unknown action token: {token}")
+        return self.action_to_id[token]
 
 
 def create_position_indices(length: int) -> torch.LongTensor:
@@ -61,10 +85,18 @@ def create_position_indices(length: int) -> torch.LongTensor:
     return torch.arange(length, dtype=torch.long)
 
 
+def pad_or_trim(sequence: Sequence[int], length: int, pad_value: int) -> List[int]:
+    if len(sequence) >= length:
+        return list(sequence[:length])
+    padded = list(sequence)
+    padded.extend([pad_value] * (length - len(sequence)))
+    return padded
+
+
 __all__ = [
     "MahjongVocabulary",
     "create_position_indices",
+    "pad_or_trim",
     "PAD_TOKEN",
     "CLS_TOKEN",
 ]
-

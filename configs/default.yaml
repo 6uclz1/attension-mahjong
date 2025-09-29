@@ -5,6 +5,9 @@ dataset:
   board_seq_len: 96
   action_seq_len: 16
   include_seat_rotation: true
+  auto_generate: 24
+  auto_generate_actions: 6
+  auto_generate_seed: 777
 
 model:
   d_model: 128
@@ -46,4 +49,3 @@ backtest:
       name: random_a
     - type: random
       name: random_b
-

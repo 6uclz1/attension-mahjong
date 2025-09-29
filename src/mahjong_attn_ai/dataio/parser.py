@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Sequence
 
 import json
 import random
@@ -11,20 +11,21 @@ import torch
 import yaml
 
 from .schema import DatasetConfig, MahjongSample
-
-
-def _pad_sequence(values: List[int], length: int, pad_value: int = 0) -> List[int]:
-    if len(values) >= length:
-        return values[:length]
-    return values + [pad_value] * (length - len(values))
+from ..features.utils import MahjongVocabulary, pad_or_trim
 
 
 class SyntheticKifuParser:
     """Parse synthetic kifu files shipped with the template repository."""
 
-    def __init__(self, data_dir: Path, config: DatasetConfig | None = None) -> None:
+    def __init__(
+        self,
+        data_dir: Path,
+        config: DatasetConfig | None = None,
+        vocab: MahjongVocabulary | None = None,
+    ) -> None:
         self.data_dir = data_dir
         self.config = config or DatasetConfig()
+        self.vocab = vocab or MahjongVocabulary.build_default()
 
     def load(self) -> List[MahjongSample]:
         """Load every supported file in ``data_dir`` and produce training samples."""
@@ -48,6 +49,9 @@ class SyntheticKifuParser:
         for record in raw_samples:
             samples.extend(self._materialise_samples(record))
 
+        if self.config.auto_generate > 0:
+            samples.extend(self._generate_synthetic(self.config.auto_generate))
+
         random.shuffle(samples)
         return samples
 
@@ -70,14 +74,31 @@ class SyntheticKifuParser:
         return records
 
     def _materialise_samples(self, record: Dict[str, Any]) -> Iterable[MahjongSample]:
-        board_tokens: List[int] = record.get("board_tokens", [])
-        action_tokens: List[int] = record.get("action_tokens", [])
-        legal_mask: List[int] = record.get("legal_mask", [1] * len(action_tokens))
-        board_padded = _pad_sequence(board_tokens, self.config.board_seq_len)
-        action_padded = _pad_sequence(action_tokens, self.config.action_seq_len)
-        legal_padded = _pad_sequence(legal_mask, self.config.action_seq_len, pad_value=0)
+        board_tokens_raw: Sequence[int | str] = record.get(
+            "board_tokens", record.get("board_tiles", [])
+        )
+        action_tokens_raw: Sequence[int | str] = record.get(
+            "action_tokens", record.get("action_labels", [])
+        )
 
-        label_action = int(record.get("label_action", 0))
+        board_tokens = [self.vocab.resolve_board_token(token) for token in board_tokens_raw]
+        action_tokens = [self.vocab.resolve_action_token(token) for token in action_tokens_raw]
+        legal_mask: List[int] = record.get("legal_mask", [1] * len(action_tokens))
+        board_padded = pad_or_trim(board_tokens, self.config.board_seq_len, self.vocab.pad_id)
+        action_padded = pad_or_trim(
+            action_tokens, self.config.action_seq_len, self.vocab.action_pad_id
+        )
+        legal_padded = pad_or_trim(legal_mask, self.config.action_seq_len, 0)
+
+        label_raw = record.get("label_action", 0)
+        if isinstance(label_raw, str):
+            target_token = self.vocab.resolve_action_token(label_raw)
+            try:
+                label_action = action_padded.index(target_token)
+            except ValueError as exc:  # pragma: no cover - defensive
+                raise ValueError("label_action not present in action_tokens") from exc
+        else:
+            label_action = int(label_raw)
         label_action = max(0, min(label_action, self.config.action_seq_len - 1))
         value_target = float(record.get("value_target", 0.0))
         aux_target = float(record.get("aux_target", 0.0))
@@ -107,3 +128,32 @@ class SyntheticKifuParser:
                 "metadata": rotated_metadata,
             }
 
+    def _generate_synthetic(self, num_games: int) -> List[MahjongSample]:
+        rng = random.Random(self.config.auto_generate_seed)
+        samples: List[MahjongSample] = []
+        valid_board_tokens = list(range(1, self.vocab.num_board_tokens))
+        valid_action_tokens = [
+            token for token in range(1, self.vocab.num_action_tokens)
+        ]
+        num_actions = min(self.config.auto_generate_actions, len(valid_action_tokens))
+
+        for game_idx in range(num_games):
+            board = rng.choices(valid_board_tokens, k=self.config.board_seq_len)
+            actions = rng.sample(valid_action_tokens, k=num_actions)
+            action_sequence = pad_or_trim(actions, self.config.action_seq_len, self.vocab.action_pad_id)
+            legal_mask = [1] * num_actions
+            legal_mask = pad_or_trim(legal_mask, self.config.action_seq_len, 0)
+            label_action = rng.randint(0, num_actions - 1)
+            template = {
+                "board_tokens": board,
+                "action_tokens": action_sequence,
+                "legal_mask": legal_mask,
+                "label_action": label_action,
+                "value_target": rng.uniform(-1.0, 1.0),
+                "aux_target": rng.uniform(0.0, 1.0),
+                "game_id": f"auto-{game_idx}",
+                "round_id": rng.randint(0, 7),
+                "turn_id": rng.randint(0, 17),
+            }
+            samples.extend(self._materialise_samples(template))
+        return samples

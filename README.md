@@ -45,7 +45,7 @@ Each config follows the same schema used by `mahjong_attn_ai.cli`: `data`, `data
 
 ## Synthetic Data
 
-Synthetic kifu records live in `data/sample_kifus/` and are parsed via `SyntheticKifuParser`. They illustrate the schema without bundling proprietary logs. Real kifu ingestion can replace this layer by swapping the parser implementation.
+Synthetic kifu records live in `data/sample_kifus/` and are parsed via `SyntheticKifuParser`. The parser now accepts both numeric ids and human-readable tile/action labels; enabling `dataset.auto_generate` seeds additional random samples for smoke tests when you lack real logs. Real kifu ingestion can replace this layer by swapping the parser implementation.
 
 ## Model Architecture
 
@@ -102,4 +102,3 @@ Pytest covers encoding shapes, legal masking, forward pass dimensions, and the b
 - **Evaluation**: JSON metrics with Top-1/Top-3 accuracy.
 - **Backtest**: `runs/eval/<timestamp>/summary.json` & `table.csv` containing KPIs, CIs, and duplicate metadata.
 - **A/B Test**: `runs/eval/abtest-*/summary.json` summarising both policies and their delta.
-

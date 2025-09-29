@@ -35,3 +35,13 @@ samples:
     label_action: 3
     value_target: -0.2
     aux_target: 0.3
+  - game_id: synthetic-strings
+    round_id: 2
+    turn_id: 4
+    board_tiles:
+      ["1m", "2m", "3m", "4m", "5m", "east", "south", "white", "green", "red", "round", "dora"]
+    action_labels: ["discard", "riichi", "pass"]
+    legal_mask: [1, 1, 1]
+    label_action: "riichi"
+    value_target: 0.4
+    aux_target: 0.2

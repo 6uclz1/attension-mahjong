@@ -59,4 +59,6 @@ class DatasetConfig:
     board_seq_len: int = DEFAULT_BOARD_SEQ_LEN
     action_seq_len: int = DEFAULT_ACTION_SEQ_LEN
     include_seat_rotation: bool = True
-
+    auto_generate: int = 0
+    auto_generate_actions: int = 6
+    auto_generate_seed: int = 1234

@@ -45,7 +45,7 @@ uv run task test
 
 ## 合成データ
 
-`data/sample_kifus/` に収録された合成牌譜は `SyntheticKifuParser` で読み込みます。実牌譜を利用する場合は、このパーサ部を差し替えることで既存パイプラインを活かしつつ移行できます。
+`data/sample_kifus/` に収録された合成牌譜は `SyntheticKifuParser` で読み込みます。牌・アクションを文字列表現で記述しても自動で ID 化され、`dataset.auto_generate` を有効にすると不足分をランダム生成データで補えます。実牌譜を利用する場合は、このパーサ部を差し替えることで既存パイプラインを活かしつつ移行できます。
 
 ## モデル構成
 
@@ -102,4 +102,3 @@ Pytest では、特徴量エンコードの形状、合法手マスク、前向�
 - **評価**: `eval` 実行時の JSON 出力およびコンソールログ。
 - **バックテスト**: `runs/eval/<timestamp>/summary.json` と `runs/eval/<timestamp>/table.csv`。
 - **A/Bテスト**: `runs/eval/abtest-*/summary.json` にポリシーA/Bおよび差分指標を記録。
-
