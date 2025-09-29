@@ -17,7 +17,11 @@ from .env.simulator_stub import Simulator, SimulatorConfig
 from .eval.backtest import BacktestConfig, BacktestRunner
 from .eval.simple_bots import HeuristicMahjongBot, ModelPolicyBot, RandomMahjongBot
 from .features.utils import MahjongVocabulary
-from .models.transformer import MahjongTransformerModel, TransformerConfig
+from .models.transformer import (
+    MahjongTransformerModel,
+    TransformerConfig,
+    upgrade_legacy_state_dict,
+)
 from .training.sl_trainer import SupervisedTrainer, TrainerConfig
 
 console = Console()
@@ -132,7 +136,23 @@ def _load_checkpoint(path: Path, config: Dict[str, Any]) -> MahjongTransformerMo
         raise FileNotFoundError(f"Checkpoint not found: {path}")
     model = _build_model(config)
     state = torch.load(path, map_location="cpu")
-    model.load_state_dict(state["model_state"])
+    model_state = state["model_state"]
+    upgraded_state, converted = upgrade_legacy_state_dict(model_state, model.config)
+    load_result = model.load_state_dict(upgraded_state, strict=False)
+    if converted:
+        console.log("Upgraded legacy checkpoint weights for rotary attention model")
+    missing = list(load_result.missing_keys)
+    unexpected = list(load_result.unexpected_keys)
+    if missing:
+        preview = ", ".join(sorted(missing)[:5])
+        if len(missing) > 5:
+            preview += ", ..."
+        console.log(f"[yellow]Missing checkpoint parameters: {preview}")
+    if unexpected:
+        preview = ", ".join(sorted(unexpected)[:5])
+        if len(unexpected) > 5:
+            preview += ", ..."
+        console.log(f"[yellow]Unexpected checkpoint parameters discarded: {preview}")
     return model
 
 
@@ -242,4 +262,3 @@ def main(argv: List[str] | None = None) -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     main()
-

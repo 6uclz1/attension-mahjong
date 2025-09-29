@@ -32,9 +32,12 @@ training:
 
 simulator:
   base_score: 25000
-  variance: 4000
-  skill_scale: 1500
-  kpi_noise: 0.04
+  variance: 45
+  turns_per_game: 32
+  reward_correct: 120
+  penalty_incorrect: -60
+  value_scale: 40
+  kifu_dir: data/sample_kifus
 
 backtest:
   num_games: 12

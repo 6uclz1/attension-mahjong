@@ -10,8 +10,9 @@ import random
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from .parser import SyntheticKifuParser
+from .parser import build_kifu_parser
 from .schema import DatasetConfig, MahjongBatch, MahjongSample
+from ..features.utils import MahjongVocabulary
 
 
 class MahjongDataset(Dataset[MahjongSample]):
@@ -80,7 +81,8 @@ def build_dataloaders(
 ) -> DataLoaderBundle:
     """Load synthetic kifus and return train/validation loaders."""
 
-    parser = SyntheticKifuParser(data_dir, dataset_config)
+    vocab = MahjongVocabulary.build_default()
+    parser = build_kifu_parser(data_dir, dataset_config, vocab)
     samples = parser.load()
     train_samples, val_samples = _split_samples(samples, val_ratio, seed)
 
@@ -99,4 +101,3 @@ __all__ = [
     "DataLoaderBundle",
     "build_dataloaders",
 ]
-

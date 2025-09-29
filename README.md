@@ -89,13 +89,6 @@ The `abtest` subcommand prints both policy summaries and their difference (with 
 
 Pytest covers encoding shapes, legal masking, forward pass dimensions, and the backtest API. Run `uv run task test` for the full suite.
 
-## Future Work
-
-- Plug in real kifu ingestion (e.g., mjai) by extending `parser.py` and `dataset.py`.
-- Replace the simulator stub with Rust/mjai bindings via the `env.simulator_stub.Simulator` interface.
-- Implement PPO in `training/rl_stub.py` once the simulator exposes step-by-step rollouts.
-- Expand auxiliary heads (shanten, uke-ire) and integrate online evaluation dashboards (Weights & Biases hook provided).
-
 ## Expected Outputs
 
 - **Training**: `runs/latest/best.ckpt` and console metrics (loss decreasing, Top-1/Top-3 above random chance on synthetic data).

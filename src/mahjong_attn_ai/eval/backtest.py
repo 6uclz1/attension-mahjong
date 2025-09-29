@@ -150,6 +150,15 @@ class BacktestRunner:
             "score_ci_high": score_ci[1],
             "num_rounds": float(len(ranks)),
         }
+        turns = summary["num_rounds"]
+        if turns:
+            summary["score_per_turn"] = summary["score_ev"] / turns
+        if "kpi_decision_accuracy" in summary:
+            summary["decision_accuracy"] = summary["kpi_decision_accuracy"]
+        if "kpi_average_reward" in summary:
+            summary["reward_per_turn"] = summary["kpi_average_reward"]
+        if "kpi_value_bonus" in summary:
+            summary["value_bonus_per_turn"] = summary["kpi_value_bonus"]
         return summary
 
     def _compare(
@@ -198,4 +207,3 @@ class BacktestRunner:
 
 
 __all__ = ["BacktestRunner", "BacktestConfig", "BacktestResult"]
-

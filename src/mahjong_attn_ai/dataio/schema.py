@@ -1,7 +1,7 @@
 """Schema definitions for mahjong transformer training samples."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, TypedDict
 
 import torch
@@ -62,3 +62,5 @@ class DatasetConfig:
     auto_generate: int = 0
     auto_generate_actions: int = 6
     auto_generate_seed: int = 1234
+    parser: str = "synthetic"
+    parser_options: Dict[str, Any] = field(default_factory=dict)

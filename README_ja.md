@@ -89,13 +89,6 @@ Rich での出力例：
 
 Pytest では、特徴量エンコードの形状、合法手マスク、前向き推論のテンソル形状、バックテスト API のスモークテストをカバーしています。`uv run task test` で一括実行できます。
 
-## 今後の拡張
-
-- `parser.py` / `dataset.py` を拡張し、実牌譜（例: mjai）の読み込みに対応。
-- `env.simulator_stub.Simulator` を Rust や mjai 連携に差し替えて実戦レベルのシミュレーションを実現。
-- シミュレータから逐次サンプルを受け取れるようになったら `training/rl_stub.py` に PPO を実装。
-- Auxiliary タスク（向聴数、受け入れ枚数など）の追加や Weights & Biases 連携。
-
 ## 想定される出力
 
 - **学習**: `runs/latest/best.ckpt`（ベストモデル）と Top-1/Top-3 を含む学習ログ。
