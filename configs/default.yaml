@@ -1,0 +1,49 @@
+data:
+  kifu_dir: data/sample_kifus
+
+dataset:
+  board_seq_len: 96
+  action_seq_len: 16
+  include_seat_rotation: true
+
+model:
+  d_model: 128
+  nhead: 4
+  num_layers: 2
+  dim_feedforward: 256
+  dropout: 0.1
+
+training:
+  epochs: 3
+  batch_size: 8
+  val_ratio: 0.25
+  seed: 42
+  lr: 0.0005
+  weight_decay: 0.01
+  grad_clip: 1.0
+  lambda_value: 0.2
+  lambda_aux: 0.1
+  device: cpu
+  output_dir: runs/latest
+  use_wandb: false
+
+simulator:
+  base_score: 25000
+  variance: 4000
+  skill_scale: 1500
+  kpi_noise: 0.04
+
+backtest:
+  num_games: 12
+  duplicate: true
+  bootstrap_samples: 200
+  alpha: 0.05
+  opponents:
+    - type: heuristic
+      name: heuristic_a
+      skill: 0.3
+    - type: random
+      name: random_a
+    - type: random
+      name: random_b
+

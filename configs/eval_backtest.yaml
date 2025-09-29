@@ -1,0 +1,45 @@
+simulator:
+  base_score: 25000
+  variance: 3500
+  skill_scale: 1800
+  kpi_noise: 0.03
+
+backtest:
+  num_games: 24
+  duplicate: true
+  bootstrap_samples: 400
+  alpha: 0.05
+  seeds: [1, 2, 3, 4, 5, 6]
+  sprt_min_effect: 0.05
+  sprt_accept_prob: 0.8
+  opponents:
+    - type: heuristic
+      name: heuristic
+      skill: 0.35
+    - type: random
+      name: random_1
+    - type: random
+      name: random_2
+
+data:
+  kifu_dir: data/sample_kifus
+
+dataset:
+  board_seq_len: 96
+  action_seq_len: 16
+  include_seat_rotation: true
+
+model:
+  d_model: 128
+  nhead: 4
+  num_layers: 2
+  dim_feedforward: 256
+  dropout: 0.1
+
+training:
+  batch_size: 8
+  val_ratio: 0.25
+  seed: 7
+  device: cpu
+  output_dir: runs/latest
+

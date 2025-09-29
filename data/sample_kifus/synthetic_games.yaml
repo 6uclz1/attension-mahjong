@@ -1,0 +1,37 @@
+samples:
+  - game_id: synthetic-000
+    round_id: 0
+    turn_id: 0
+    board_tokens: [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 0, 2, 3, 5]
+    action_tokens: [1, 2, 3, 4, 5, 6]
+    legal_mask: [1, 1, 1, 0, 1, 0]
+    label_action: 2
+    value_target: 0.2
+    aux_target: 0.35
+  - game_id: synthetic-000
+    round_id: 0
+    turn_id: 1
+    board_tokens: [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 1, 3, 4, 6]
+    action_tokens: [1, 3, 5, 6]
+    legal_mask: [1, 1, 0, 1]
+    label_action: 1
+    value_target: -0.1
+    aux_target: 0.25
+  - game_id: synthetic-001
+    round_id: 1
+    turn_id: 0
+    board_tokens: [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 2, 4, 5, 7]
+    action_tokens: [1, 2, 4, 5]
+    legal_mask: [1, 0, 1, 1]
+    label_action: 0
+    value_target: 0.05
+    aux_target: 0.4
+  - game_id: synthetic-001
+    round_id: 1
+    turn_id: 2
+    board_tokens: [4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 3, 5, 6, 8]
+    action_tokens: [2, 3, 5, 6]
+    legal_mask: [0, 1, 1, 1]
+    label_action: 3
+    value_target: -0.2
+    aux_target: 0.3

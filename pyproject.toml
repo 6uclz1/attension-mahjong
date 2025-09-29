@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mahjong-attn-ai"
+version = "0.1.0"
+description = "Japanese riichi mahjong AI prototype with transformer core and backtesting."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10,<3.13"
+authors = [
+  {name = "Mahjong AI Team"},
+]
+dependencies = [
+  "torch==2.2.0",
+  "numpy<2",
+  "pandas>=2.0",
+  "pyyaml>=6.0",
+  "rich>=13.7",
+  "tqdm>=4.66",
+  "scipy>=1.11",
+  "typing-extensions>=4.8",
+  "joblib>=1.3",
+]
+
+[project.optional-dependencies]
+wandb = ["wandb>=0.16"]
+
+[project.urls]
+Home = "https://example.com/mahjong-attn-ai"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = [
+  "E",
+  "F",
+  "I",
+  "N",
+  "UP",
+]
+ignore = ["E203"]
+exclude = [
+  "data",
+  "runs",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_subclassing_any = false
+plugins = []
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = [
+  "tests",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]
+
+[tool.taskipy.settings]
+use_poetry_runner = false
+
+[tool.taskipy.tasks]
+setup = "uv venv && uv sync"
+encode = "uv run python -m mahjong_attn_ai.cli encode --config configs/default.yaml"
+train = "uv run python -m mahjong_attn_ai.cli train --config configs/default.yaml"
+eval = "uv run python -m mahjong_attn_ai.cli eval --config configs/default.yaml --ckpt runs/latest/best.ckpt"
+backtest = "uv run python -m mahjong_attn_ai.cli backtest --config configs/eval_backtest.yaml --ckpt runs/latest/best.ckpt"
+abtest = "uv run python -m mahjong_attn_ai.cli abtest --config configs/eval_backtest.yaml --ckpt-a runs/latest/best.ckpt --ckpt-b runs/latest/baseline.ckpt"
+lint = "uv run ruff check src tests && uv run ruff format --check src tests"
+typecheck = "uv run mypy src tests"
+test = "uv run pytest -q"
+all = "uv run ruff check src tests && uv run ruff format --check src tests && uv run mypy src tests && uv run pytest -q"

@@ -1,0 +1,255 @@
+# ⬇️ Codex 用プロンプト（モダン版・uv・バックテスト対応）
+
+あなたはトップレベルの機械学習エンジニア兼ソフトウェアアーキテクトです。
+以下の要件を満たす**完全な雛形リポジトリ**（コード、設定、README、テスト、サンプルデータ、実行コマンド）を生成してください。
+本プロジェクトは **日本式リーチ麻雀AI（Attention/Transformer 中核）** の**教師あり→RL拡張可能**なMVPです。
+**環境は uv で構築**し、**評価はバックテスト可能**な設計にしてください。
+
+---
+
+## 目的
+
+1. 教師あり模倣学習（SL）で「人間牌譜に近い打牌」を学習（Top-1/Top-3で評価）。
+2. 将来の強化学習（PPO）にスムーズに移行可能なアーキテクチャ。
+3. **バックテスト評価**：自己対戦＆A/Bテストで**平均順位・素点EV**、副次KPI（放銃率/和了率/立直率/平均打点など）、**信頼区間**と**有意性**（ブートストラップ/ベイズ推定/簡易SPRT）を算出。
+4. **同配分（Duplicate Mahjong）**や固定シードで分散を抑えた評価に対応。
+
+---
+
+## 技術スタック・モダン開発体験
+
+* **uv**（仮想環境＆依存管理）
+* Python 3.10+ / **PyTorch 2.x**
+* numpy / pandas / rich / pyyaml / tqdm
+* **ruff**（Linter/Formatter）, **mypy**（型チェック）, **pytest**（テスト）
+* **taskipy**（開発タスクランナー）
+* （任意オフ）**wandb** フックのみ
+
+---
+
+## リポジトリ構成
+
+```
+mahjong-attn-ai/
+  README.md
+  pyproject.toml            # uv + ruff + mypy + pytest + taskipy 設定
+  uv.lock                   # 生成
+  .gitignore
+  configs/
+    default.yaml
+    eval_backtest.yaml
+  data/
+    sample_kifus/           # 合成サンプル牌譜（実データは含めない）
+  src/mahjong_attn_ai/
+    __init__.py
+    cli.py                  # encode / train / eval / backtest / abtest を提供
+    features/
+      __init__.py
+      encoders.py           # トークン化/埋め込み前の特徴量
+      legal_mask.py         # 合法手マスク生成
+      utils.py
+    models/
+      __init__.py
+      transformer.py        # 盤面Encoder + 候補側 + Cross-Attn
+      heads.py              # Policy/Value/Aux heads
+    dataio/
+      __init__.py
+      parser.py             # 合成牌譜→手番サンプル化（将来差替えI/F）
+      dataset.py            # PyTorch Dataset/Collate
+      schema.py             # TypedDict/Dataclass でスキーマ定義
+    training/
+      __init__.py
+      sl_trainer.py         # 教師あり学習ループ
+      metrics.py            # Top1/Top3, AUC, etc.
+      rl_stub.py            # PPOを後日実装するためのスタブ＆IF
+    eval/
+      __init__.py
+      kpi.py                # KPI算出（放銃率/和了率/立直率/平均打点 等）
+      backtest.py           # 反復自己対戦・同配分・統計処理を実施
+      simple_bots.py        # ルールベース簡易Bot（評価ベースライン）
+    env/
+      __init__.py
+      simulator_stub.py     # 将来Rust/mjai差替えのFFIポイント
+  tests/
+    test_encoding.py
+    test_legal_mask.py
+    test_forward_shapes.py
+    test_backtest_api.py
+```
+
+---
+
+## モデル仕様（必須要件）
+
+* **盤面エンコーダ**：TransformerEncoder（Multi-Head Self-Attention、Pre-LN、位置埋め込み）
+* **候補エンコーダ**：行動候補トークン列（打牌/立直/鳴きスタブ等）を埋め込み、軽量Encoder可
+* **Cross-Attention**：候補=Query、盤面=Key/Value
+* **ヘッド**：
+
+  * Policy Head：各候補ロジット（合法マスクで `-inf`）
+  * Value Head：半荘/局EV 予測（MSE）
+  * Aux Head（最低1つ）：危険度（放銃確率）または 向聴/受け入れ回帰
+* **損失**：`L = CE(policy) + λ_v * MSE(value) + Σ λ_aux * aux_loss`
+* **行動空間**：MVPは 打牌＋立直＋パス（鳴き/槓はスタブを残す）
+
+---
+
+## 入力表現（拡張しやすい簡易版）
+
+* **トークン列**：
+
+  * 手牌（14）
+  * 自家/他家の捨て牌系列（時系列）
+  * 副露要約（面子種別フラグ）
+  * 局メタ（局/本場/供託/場風/自風/点差/残りツモ数/ドラ表示 等）
+* **候補トークン列**：合法アクションID 群
+* **スキーマ**：`schema.py`（TypedDict/Dataclass）に `board_tokens, board_pos, action_tokens, action_pos, legal_mask, label_action` などを定義
+
+---
+
+## データ／前処理
+
+* `data/sample_kifus/` に **合成のサンプル牌譜**（著作権・ToS配慮）
+* `parser.py`：合成牌譜→手番サンプル化（将来、実牌譜ローダーを差し替え）
+* `dataset.py`：学習/検証分割、`DataLoader` を提供
+* データ増強：座席回転/風入替 等の対称性活用
+
+---
+
+## CLI コマンド（task 経由でも直叩きでもOK）
+
+* `python -m mahjong_attn_ai.cli encode --config configs/default.yaml`
+* `python -m mahjong_attn_ai.cli train  --config configs/default.yaml`
+* `python -m mahjong_attn_ai.cli eval   --config configs/default.yaml --ckpt runs/latest/best.ckpt`
+* `python -m mahjong_attn_ai.cli backtest --config configs/eval_backtest.yaml --ckpt runs/latest/best.ckpt`
+* `python -m mahjong_attn_ai.cli abtest --config configs/eval_backtest.yaml --ckpt-a path/to/A.ckpt --ckpt-b path/to/B.ckpt`
+
+`taskipy` でも同等の `task` を用意（`task encode/train/eval/backtest/abtest/lint/typecheck/test`）。
+
+---
+
+## **バックテスト評価設計（必須）**
+
+`eval/backtest.py` に以下を実装：
+
+1. **反復自己対戦**
+
+   * N 半荘 × M シードで繰り返し対戦（CPUで短時間に回る規模）
+   * 各試行の **平均順位** と **素点EV** を収集
+   * **同配分（Duplicate Mahjong）**：可能なら同じ乱数列/牌山で方策差を比較し、分散を削減
+   * 乱数管理と再現性（seed 固定・ログ出力）
+
+2. **KPI ログ**
+
+   * 放銃率 / 和了率 / 立直率 / 立直後放銃率 / 平均和了点 / 平均放銃点 / 鳴き率（将来）
+   * 局進行KPI（テンパイ率、最終巡目の安全行動率 など拡張余地）
+
+3. **統計処理**
+
+   * **ブートストラップ**で平均順位・素点EVの **95% CI** を算出
+   * A/B 比較は以下のいずれかを用意：
+
+     * **ブートストラップ差のCI**（差の0跨ぎ判定）
+     * 簡易 **ベイズ推定**（正規近似で平均差の事後）
+     * **SPRT 風**の逐次判定（境界/最小効果量は `eval_backtest.yaml` で設定）
+
+4. **A/B テスト API**
+
+   * `--ckpt-a`, `--ckpt-b` を受け取り、**同一配牌列**で対戦し**差分とCI**を出力
+   * 出力：表形式（CSV/Markdown）とJSON（ダッシュボード連携を想定）
+
+5. **出力**
+
+   * `runs/eval/<timestamp>/summary.json`（統計結果、KPI、設定）
+   * `runs/eval/<timestamp>/table.csv`（各半荘ごとの集計）
+   * 端末出力は **rich** で見やすく
+
+---
+
+## 開発タスク（taskipy）
+
+`pyproject.toml` に以下のタスクを登録：
+
+* `task setup`: 初回セット（uv venv, uv sync, pre-commit準備は不要でOK）
+* `task encode`, `task train`, `task eval`, `task backtest`, `task abtest`
+* `task lint`: ruff（lint & format）
+* `task typecheck`: mypy
+* `task test`: pytest -q
+* `task all`: lint → typecheck → test
+
+---
+
+## uv / pyproject 設定
+
+* `pyproject.toml`：
+
+  * `[project]` に依存を列挙（torch はCPU版にしてよい）
+  * `[tool.ruff]`（lint/format）、`[tool.mypy]`（厳しめでOK）、`[tool.pytest.ini_options]`
+  * `[tool.taskipy.tasks]` に上記タスク
+* 依存は `uv` でロック（`uv.lock` 生成）
+
+---
+
+## README（必須事項）
+
+1. プロジェクト概要：Transformer + Cross-Attention、合法マスク、Aux学習、**バックテスト評価**
+2. **環境構築（uv）**：
+
+   ```
+   uv venv
+   uv sync
+   uv run python -m mahjong_attn_ai.cli encode --config configs/default.yaml
+   uv run python -m mahjong_attn_ai.cli train  --config configs/default.yaml
+   uv run python -m mahjong_attn_ai.cli eval   --config configs/default.yaml --ckpt runs/latest/best.ckpt
+   uv run python -m mahjong_attn_ai.cli backtest --config configs/eval_backtest.yaml --ckpt runs/latest/best.ckpt
+   uv run python -m mahjong_attn_ai.cli abtest   --config configs/eval_backtest.yaml --ckpt-a A.ckpt --ckpt-b B.ckpt
+   ```
+3. 期待される出力例（学習ログ、Top-1/Top-3、バックテスト要約のサンプル）
+4. **評価設計の説明**（同配分、CI、有意性）
+5. 将来拡張：mjai連携、RustシミュレータFFI、PPO 実装ガイド
+
+---
+
+## コード品質
+
+* 型ヒント/Docstring/設計意図を要所に明記
+* 重要関数は小さく分割、テスト容易性を確保
+* `tests/`
+
+  * `test_encoding.py`：トークン化形状・位置埋め込み境界
+  * `test_legal_mask.py`：不法手に `-inf` が適用される
+  * `test_forward_shapes.py`：`policy_log_probs, value, aux_out` 形状
+  * `test_backtest_api.py`：同配分モードと統計器のスモークテスト
+
+---
+
+## 受け入れ基準（Acceptance Criteria）
+
+1. `encode → train → eval` が**CPU**で完走し、loss 低下＆Top-1/Top-3がランダム超え
+2. `backtest` が N×M 試行の要約（平均順位/素点EV/KPI/95%CI）を JSON/CSV で出力
+3. `abtest` が **同一配牌列**で A/B の差と CI を出力
+4. `legal_mask` が厳密に機能（テストで検証）
+5. READMEの uv 手順どおりに実行可能
+6. `rl_stub.py` に PPO 実装の I/F と疑似コード（将来実装の指針）がある
+
+---
+
+## 実装ヒント（モデル抜粋）
+
+* 盤面：`nn.Embedding` + 位置埋め込み → `TransformerEncoder`
+* 候補：`nn.Embedding` + 小型Encoder
+* Cross-Attn：`nn.MultiheadAttention`（候補=Q、盤面=K=V）
+* Policy：各候補ベクトルに `Linear(d_model,1)` → `(B, A)` ロジット → 合法マスクで `-inf` → `log_softmax`
+* Value：盤面CLS風ベクトル → `Linear(d_model,1)`
+* Aux：`ModuleDict`（危険度/向聴など）
+
+---
+
+## 注意
+
+* サンプルは**合成データのみ**。実牌譜はToS順守のうえ将来差替えI/Fで対応。
+* GPU不要、**短時間で回るミニ設定**。
+* 日本語コメントに配慮。
+
+以上に従って、**動く雛形**を生成してください。
+
